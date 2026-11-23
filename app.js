@@ -277,6 +277,14 @@ function vistaVisita(o, v, tab) {
   else tabDocumentos(o, v);
 }
 
+// Nombres ya usados en «Otros» en la obra (para sugerirlos al escribir)
+function nombresOtros(o) {
+  const n = new Set();
+  for (const v of o.visitas) { Object.values(v.resultados || {}).forEach(r => { if (r.resp === 'otros' && (r.otro || '').trim()) n.add(r.otro.trim()); }); (v.libres || []).forEach(l => { if (l.resp === 'otros' && (l.otro || '').trim()) n.add(l.otro.trim()); }); }
+  return [...n];
+}
+const datalistOtros = o => `<datalist id="dl-otros">${nombresOtros(o).map(x => `<option value="${h(x)}">`).join('')}</datalist>`;
+
 // ----- pestaña check list -----
 function tabCheck(o, v, tocar) {
   const caps = capitulosObra(o);
@@ -294,16 +302,17 @@ function tabCheck(o, v, tocar) {
       <div class="seg">${['ok', 'ko', 'pend', 'np'].map(s => `<button data-e="${s}" class="${e === s ? 'on' : ''}">${ESTADOS[s].corto}</button>`).join('')}</div>
       <div class="extra">
         ${p.valor ? `<input type="text" data-campo="valor" placeholder="${h(p.valor)}" value="${h(r.valor)}">` : ''}
-        <textarea data-campo="nota" placeholder="Nota (sale en el informe y, si está pendiente, en las actas)" style="${r.nota || verResp ? '' : 'display:none'}">${h(r.nota)}</textarea>
+        <textarea data-campo="nota" placeholder="Nota (sale en el informe; si el punto está ✗ o Pend., también en las actas)" style="${r.nota || verResp ? '' : 'display:none'}">${h(r.nota)}</textarea>
         ${r.nota || verResp ? '' : '<button class="link peq" data-accion="nota" style="justify-self:start">+ Añadir nota</button>'}
         <label style="${verResp ? '' : 'display:none'}" class="r-resp"><span class="suave" style="font-size:13px">Responsable</span><select data-campo="resp">${opResp(r.resp || c.lote)}</select></label>
+        <input type="text" data-campo="otro" list="dl-otros" placeholder="¿Quién? (empresa o persona)" value="${h(r.otro)}" style="${verResp && r.resp === 'otros' ? '' : 'display:none'}">
       </div></div>`;
   };
   $('#app').innerHTML = caps.map(c => {
     const r = contarCap(c, v);
     return `<details class="cap" data-c="${c.id}" ${abiertos[c.id] ? 'open' : ''}><summary><span>${c.num}. ${h(c.nombre)}</span><span class="cont" data-cont="${c.id}">${r.rev}/${r.tot}</span></summary>
       ${c.apartados.map(a => `<div class="apartado"><h4>${a.letra}. ${h(a.nombre)}</h4>${a.puntos.map(p => itemHtml(c, a, p)).join('')}</div>`).join('')}</details>`;
-  }).join('') + '<p class="suave">✓ Correcto · ✗ Incorrecto · Pend. Pendiente de comprobar · N/P No procede. Pulsa otra vez un estado para quitarlo.</p>';
+  }).join('') + datalistOtros(o) + '<p class="suave">✓ Correcto · ✗ Incorrecto · Pend. Pendiente de comprobar · N/P No procede. Pulsa otra vez un estado para quitarlo.</p>';
 
   document.querySelectorAll('details.cap').forEach(d => d.addEventListener('toggle', () => { abiertos[d.dataset.c] = d.open; sessionStorage.setItem('abiertos', JSON.stringify(abiertos)); }));
   const app = $('#app');
@@ -318,6 +327,7 @@ function tabCheck(o, v, tocar) {
       const ta = it.querySelector('textarea'); if (document.activeElement !== ta) ta.value = r.nota || '';
       if (verResp || r.nota) { ta.style.display = ''; const bn = it.querySelector('[data-accion=nota]'); if (bn) bn.remove(); }
       const sel = it.querySelector('select'); if (r.resp) sel.value = r.resp;
+      const io = it.querySelector('[data-campo=otro]'); io.style.display = verResp && sel.value === 'otros' ? '' : 'none'; if (document.activeElement !== io) io.value = r.otro || '';
       const vi = it.querySelector('[data-campo=valor]'); if (vi && document.activeElement !== vi) vi.value = r.valor || '';
     });
     caps.forEach(c => { const x = contarCap(c, v); const el = document.querySelector(`[data-cont="${c.id}"]`); if (el) el.textContent = `${x.rev}/${x.tot}`; });
@@ -333,6 +343,7 @@ function tabCheck(o, v, tocar) {
     const c = e.target.dataset.campo; if (!c) return; const it = e.target.closest('.item'); const k = it.dataset.k;
     res(k)[c] = e.target.value; tocar();
     document.querySelectorAll(`.item[data-k="${k}"] [data-campo="${c}"]`).forEach(x => { if (x !== e.target) x.value = e.target.value; });
+    if (c === 'resp') { sincronizar(k); if (e.target.value === 'otros') { const io = it.querySelector('[data-campo=otro]'); if (!io.value) io.focus(); } }
   };
   app.onchange = app.oninput;
 }
@@ -346,19 +357,24 @@ function tabPendientes(o, v, tocar) {
   $('#app').innerHTML = `
     <div class="tarjeta"><h3>Añadir pendiente libre</h3><div class="suave">Para cosas que no están en el check list (formación, presupuestos, documentación…).</div>
       <label class="campo"><span>Texto</span><textarea id="l-texto" rows="2"></textarea></label>
-      <div class="fila"><select id="l-resp">${opResp('oc')}</select><button class="prim" id="l-add" style="flex:0 0 auto">Añadir</button></div></div>
-    ${grupos.length ? grupos.map(g => `<div class="tarjeta"><h3>${h(g.resp.nombre || g.resp.rotulo)} <span class="chip">${g.items.length}</span></h3>
+      <div class="fila"><select id="l-resp">${opResp('oc')}</select><button class="prim" id="l-add" style="flex:0 0 auto">Añadir</button></div>
+      <input type="text" id="l-otro" list="dl-otros" placeholder="¿Quién? (empresa o persona)" style="display:none;margin-top:6px"></div>${datalistOtros(o)}
+    ${grupos.length ? grupos.map(g => `<div class="tarjeta"><h3>${h(g.nombre)}${g.resp.id === 'otros' && g.clave !== 'otros' ? ' <span class="chip">Otros</span>' : ''} <span class="chip">${g.items.length}</span></h3>
       ${g.items.map(p => p.origen === 'check'
         ? `<div class="pend-item"><div>${h(p.texto)}</div><div class="suave"><span class="chip">${p.ref} ${h(p.titulo)}</span> <span class="chip">${ESTADOS[p.estado].largo}</span> <button class="link peq" data-ir="${h(p.clave)}">Ver en el check list</button></div></div>`
         : `<div class="pend-item" data-l="${p.id}"><textarea data-lc="texto" rows="2">${h(p.texto)}</textarea>
-            <div class="fila" style="margin-top:6px"><select data-lc="resp">${opResp(p.resp)}</select><button class="peq" data-la="cerrar" style="flex:0 0 auto">Resuelto</button><button class="peq peligro" data-la="borrar" style="flex:0 0 auto">Borrar</button></div></div>`).join('')}</div>`).join('')
+            <div class="fila" style="margin-top:6px"><select data-lc="resp">${opResp(p.resp)}</select><button class="peq" data-la="cerrar" style="flex:0 0 auto">Resuelto</button><button class="peq peligro" data-la="borrar" style="flex:0 0 auto">Borrar</button></div>
+            ${p.resp === 'otros' ? `<input type="text" data-lc="otro" list="dl-otros" placeholder="¿Quién? (empresa o persona)" value="${h(p.otro)}" style="margin-top:6px">` : ''}</div>`).join('')}</div>`).join('')
       : '<div class="vacia">No hay pendientes en esta visita.</div>'}
     <div class="tarjeta"><h3>Puntos generales del acta de visita («Reunidos»)</h3><div class="suave">Opcional. Salen al principio del acta de visita, antes de los apartados por responsable.</div>
       <label class="campo"><span>Texto de introducción (sin numerar)</span><textarea id="g-intro" rows="2" placeholder="Se realiza formación de la central de incendios a personal de tienda:">${h(v.introReunidos)}</textarea></label>
       <div id="g-lista">${(v.generales || []).map((t, i) => `<div class="fila" style="margin-top:6px"><textarea data-g="${i}" rows="2">${h(t)}</textarea><button class="peq peligro" data-gb="${i}" style="flex:0 0 auto">✕</button></div>`).join('')}</div>
       <button class="peq" id="g-add" style="margin-top:8px">+ Añadir punto general</button></div>
-    ${cerrados.length ? `<div class="tarjeta"><h3>Resueltos en esta visita</h3>${cerrados.map(l => `<div class="pend-item" data-l="${l.id}"><div class="suave">${h(l.texto)} · ${h(nombreResp(o, l.resp))}</div><button class="link peq" data-la="reabrir">Reabrir</button></div>`).join('')}</div>` : ''}`;
-  $('#l-add').onclick = () => { const t = $('#l-texto').value.trim(); if (!t) return; v.libres = v.libres || []; v.libres.push({ id: uid(), texto: t, resp: $('#l-resp').value, cerrado: false }); tocar(); guardar(true); tabPendientes(o, v, tocar); toast('Pendiente añadido'); };
+    ${cerrados.length ? `<div class="tarjeta"><h3>Resueltos en esta visita</h3>${cerrados.map(l => `<div class="pend-item" data-l="${l.id}"><div class="suave">${h(l.texto)} · ${h(l.resp === 'otros' && l.otro ? l.otro : nombreResp(o, l.resp))}</div><button class="link peq" data-la="reabrir">Reabrir</button></div>`).join('')}</div>` : ''}`;
+  $('#l-add').onclick = () => { const t = $('#l-texto').value.trim(); if (!t) return; v.libres = v.libres || []; const resp = $('#l-resp').value; const otro = resp === 'otros' ? $('#l-otro').value.trim() : '';
+    if (resp === 'otros' && !otro) { alert('Indica quién es el responsable (empresa o persona).'); $('#l-otro').focus(); return; }
+    v.libres.push({ id: uid(), texto: t, resp, otro, cerrado: false }); tocar(); guardar(true); tabPendientes(o, v, tocar); toast('Pendiente añadido'); };
+  $('#l-resp').onchange = () => { const io = $('#l-otro'); io.style.display = $('#l-resp').value === 'otros' ? '' : 'none'; if (io.style.display === '') io.focus(); };
   $('#g-add').onclick = () => { v.generales = v.generales || []; v.generales.push(''); tocar(); tabPendientes(o, v, tocar); const ts = document.querySelectorAll('[data-g]'); ts[ts.length - 1].focus(); };
   const app = $('#app');
   app.oninput = e => {
@@ -367,7 +383,7 @@ function tabPendientes(o, v, tocar) {
     if (t.dataset.g != null) { v.generales[+t.dataset.g] = t.value; tocar(); return; }
     const pi = t.closest('[data-l]'); if (pi && t.dataset.lc) { const l = v.libres.find(x => x.id === pi.dataset.l); l[t.dataset.lc] = t.value; tocar(); if (t.dataset.lc === 'resp') tabPendientes(o, v, tocar); }
   };
-  app.onchange = e => { if (e.target.tagName === 'SELECT') app.oninput(e); };
+  app.onchange = e => { if (e.target.tagName === 'SELECT' && e.target.id !== 'l-resp') app.oninput(e); if (e.target.dataset.lc === 'otro') tabPendientes(o, v, tocar); };
   app.onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.ir) { const caps = capitulosObra(o); const c = caps.find(c => c.apartados.some(a => a.puntos.some(p => claveResultado(p) === b.dataset.ir)));
@@ -414,11 +430,17 @@ function tabDocumentos(o, v) {
   const otros = o.responsables.filter(r => !r.lote);
   const cuenta = id => pendientesVisita(o, v).filter(p => p.resp === id).length;
   const fila = (id, nombre, det) => `<div class="docbtn"><div class="n"><div>${nombre}</div><div class="suave">${det || ''}</div></div><button class="peq" data-doc="${id}" data-f="docx">Word</button><button class="peq" data-doc="${id}" data-f="pdf">PDF</button></div>`;
+  const grupos = pendientesPorResponsable(o, v);
+  const filasIncidencias = otros.flatMap(r => {
+    if (r.id !== 'otros') return [fila('inc:' + r.id, h(r.nombre || r.rotulo), `${cuenta(r.id)} incidencias`)];
+    const gs = grupos.filter(g => g.resp.id === 'otros');
+    return gs.length ? gs.map(g => fila('inc:' + g.clave, h(g.nombre) + (g.clave !== 'otros' ? ' <span class="chip">Otros</span>' : ''), `${g.items.length} incidencias`)) : [fila('inc:otros', h(r.nombre || r.rotulo), '0 incidencias')];
+  }).join('');
   $('#app').innerHTML = `
     <div class="tarjeta"><h3>Para el cliente</h3>${fila('check', 'Informe del check list', 'Formato del listado de entrega (portada, índice y capítulos)')}</div>
     <div class="tarjeta"><h3>Acta de la visita</h3>${fila('visita', `Acta entrega instalaciones Nº${n}`, `${pendientesVisita(o, v).length} pendientes, separados por responsable`)}</div>
     <div class="tarjeta"><h3>Actas de recepción provisional</h3>${lotes.map(r => fila('rec:' + r.id, `${h(r.rotulo)}: ${h(r.nombre || '—')}`, `${cuenta(r.id)} trabajos pendientes`)).join('')}</div>
-    <div class="tarjeta"><h3>Listados de incidencias (sin firmas)</h3>${otros.map(r => fila('inc:' + r.id, h(r.nombre || r.rotulo), `${cuenta(r.id)} incidencias`)).join('')}</div>
+    <div class="tarjeta"><h3>Listados de incidencias (sin firmas)</h3>${filasIncidencias}</div>
     <p class="suave">PDF: se abre la vista previa; pulsa «Guardar PDF» y en la ventana de impresión elige «Guardar como PDF».</p>`;
   $('#app').onclick = async e => {
     const b = e.target.closest('[data-doc]'); if (!b) return;

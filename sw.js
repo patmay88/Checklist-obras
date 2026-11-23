@@ -1,6 +1,6 @@
 // Service worker: guarda la app en el móvil para que funcione sin cobertura.
 // Al publicar una versión nueva, cambiar VERSION para que los móviles la descarguen.
-const VERSION = 'checklist-v2';
+const VERSION = 'checklist-v3';
 const ARCHIVOS = ['./', 'index.html', 'app.js', 'plantillas.js', 'motor-docs.js', 'documentos.js', 'manifest.webmanifest',
   'img/icon-192.png', 'img/icon-512.png'];
 

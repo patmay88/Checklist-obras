@@ -32,15 +32,26 @@ function pendientesVisita(obra, visita) {
     if (!r || (r.estado !== 'ko' && r.estado !== 'pend')) continue;
     vistos.add(k);
     const texto = (r.nota || '').trim() || (r.estado === 'pend' ? `${p.titulo}: pendiente de comprobar.` : `${p.titulo}: ${p.desc}`);
-    lista.push({ origen: 'check', clave: k, ref: `${c.num}.${a.letra}`, titulo: p.titulo, estado: r.estado, resp: r.resp || c.lote, texto });
+    lista.push({ origen: 'check', clave: k, ref: `${c.num}.${a.letra}`, titulo: p.titulo, estado: r.estado, resp: r.resp || c.lote, otro: r.otro, texto });
   }
-  for (const l of visita.libres || []) if (!l.cerrado && (l.texto || '').trim()) lista.push({ origen: 'libre', id: l.id, resp: l.resp, texto: l.texto.trim() });
+  for (const l of visita.libres || []) if (!l.cerrado && (l.texto || '').trim()) lista.push({ origen: 'libre', id: l.id, resp: l.resp, otro: l.otro, texto: l.texto.trim() });
   return lista;
 }
 function pendientesPorResponsable(obra, visita) {
   const todos = pendientesVisita(obra, visita);
-  return obra.responsables.map(r => ({ resp: r, items: todos.filter(p => p.resp === r.id) })).filter(g => g.items.length);
+  const grupos = [];
+  for (const r of obra.responsables) {
+    const items = todos.filter(p => p.resp === r.id);
+    if (r.id !== 'otros') { if (items.length) grupos.push({ clave: r.id, nombre: r.nombre || r.rotulo, resp: r, items }); continue; }
+    // «Otros»: un grupo por cada empresa o persona indicada
+    const nombres = [...new Set(items.map(nombreOtro).filter(Boolean))];
+    for (const n of nombres) grupos.push({ clave: 'otros:' + n, nombre: n, resp: r, items: items.filter(p => nombreOtro(p) === n) });
+    const sin = items.filter(p => !nombreOtro(p));
+    if (sin.length) grupos.push({ clave: 'otros', nombre: r.nombre || r.rotulo, resp: r, items: sin });
+  }
+  return grupos;
 }
+function nombreOtro(p) { return p.resp === 'otros' ? (p.otro || '').trim().toUpperCase() : ''; }
 
 // ---------- bloques comunes ----------
 const P = (runs, o = {}) => Object.assign({ t: 'p', runs: Array.isArray(runs) ? runs : [{ text: runs }] }, o);
@@ -160,7 +171,7 @@ function docActaVisita(obra, visita, numVisita) {
   b.push(...listaNumerada(generales, 1, 9));
   let n = 1;
   for (const g of pendientesPorResponsable(obra, visita)) {
-    b.push(P([{ text: (g.resp.nombre || g.resp.rotulo).toUpperCase() + ':', size: 9 }], { before: 12, after: 4, keepNext: true }));
+    b.push(P([{ text: g.nombre.toUpperCase() + ':', size: 9 }], { before: 12, after: 4, keepNext: true }));
     b.push(...listaNumerada(g.items.map(i => i.texto), n, 9)); n += g.items.length;
   }
   b.push(P([{ text: 'FOTOGRAFIAS', b: true, size: 9 }], { before: 18 }));
@@ -169,9 +180,11 @@ function docActaVisita(obra, visita, numVisita) {
 }
 
 // ---------- 3. Listado de incidencias de un responsable (p. ej. Propiedad CC), sin firmas ----------
-function docIncidencias(obra, visita, respId) {
-  const r = obra.responsables.find(x => x.id === respId);
-  const items = pendientesVisita(obra, visita).filter(p => p.resp === respId);
+function docIncidencias(obra, visita, clave) {
+  const g = pendientesPorResponsable(obra, visita).find(x => x.clave === clave);
+  const r0 = obra.responsables.find(x => x.id === clave);
+  const r = { nombre: g ? g.nombre : (r0 ? (r0.nombre || r0.rotulo) : clave) };
+  const items = g ? g.items : [];
   const b = datosActa(obra, visita, asistentesAgrupados(visita.asistentes || []), 9);
   b.push(P([{ text: 'RESPONSABLE: ', b: true, size: 9 }, { text: (r.nombre || r.rotulo).toUpperCase(), b: true, size: 9 }], { before: 14, after: 12, bordeInf: linea(ROJO_ACTA, 1.5) }));
   b.push(...listaNumerada(items.map(i => i.texto), 1, 9));
