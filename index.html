@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#C00000">
+<title>Check list instalaciones</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<style>
+:root{--rojo:#C00000;--gris:#f3f3f1;--borde:#d9d9d6;--texto:#1d1d1b;--suave:#6b6b66;--ok:#1f8a4c;--ko:#c62828;--pend:#d98a00;--np:#6b6b66;--azul:#2f6fb5}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--gris);color:var(--texto);font:16px/1.4 -apple-system,"Segoe UI",Roboto,Tahoma,sans-serif;-webkit-tap-highlight-color:transparent}
+header.barra{position:sticky;top:0;z-index:20;background:#fff;border-bottom:3px solid var(--rojo);display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:52px}
+header.barra img{height:16px}
+header.barra .tit{flex:1;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button,.btn{font:inherit;border:1px solid var(--borde);background:#fff;color:var(--texto);border-radius:8px;padding:9px 12px;cursor:pointer;min-height:42px}
+button.prim,.btn.prim{background:var(--rojo);border-color:var(--rojo);color:#fff;font-weight:600}
+button.peq{min-height:34px;padding:5px 9px;font-size:14px}
+button.link{border:none;background:none;color:var(--azul);padding:4px 6px;min-height:0}
+button.peligro{color:var(--ko);border-color:#e9b6b6}
+main{max-width:820px;margin:0 auto;padding:12px 10px 90px}
+.tarjeta{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:12px;margin-bottom:10px}
+.tarjeta h3{margin:0 0 6px;font-size:16px}
+.suave{color:var(--suave);font-size:14px}
+label.campo{display:block;margin:10px 0}
+label.campo span{display:block;font-size:13px;color:var(--suave);margin-bottom:3px}
+input[type=text],input[type=date],select,textarea{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--borde);border-radius:8px;background:#fff}
+textarea{min-height:64px;resize:vertical}
+.fila{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fila>*{flex:1}
+.acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pestanas{position:sticky;top:52px;z-index:15;display:flex;background:#fff;border-bottom:1px solid var(--borde)}
+.pestanas button{flex:1;border:none;border-radius:0;border-bottom:3px solid transparent;font-size:14px;padding:10px 4px;background:#fff}
+.pestanas button.act{border-bottom-color:var(--rojo);font-weight:600}
+details.cap{background:#fff;border:1px solid var(--borde);border-radius:10px;margin-bottom:10px;overflow:hidden}
+details.cap>summary{list-style:none;padding:12px;font-weight:600;display:flex;justify-content:space-between;gap:8px;cursor:pointer}
+details.cap>summary::-webkit-details-marker{display:none}
+.apartado{padding:4px 10px 8px;border-top:1px solid var(--borde)}
+.apartado h4{margin:10px 0 6px;font-size:14px;color:var(--rojo)}
+.item{border:1px solid var(--borde);border-left:5px solid var(--borde);border-radius:8px;padding:9px;margin-bottom:8px;background:#fff}
+.item.e-ok{border-left-color:var(--ok)}.item.e-ko{border-left-color:var(--ko)}.item.e-pend{border-left-color:var(--pend)}.item.e-np{border-left-color:var(--np)}
+.item .t{font-weight:600}
+.item .d{font-size:14px;color:var(--suave)}
+.item .vinc{font-size:12px;color:var(--azul)}
+.seg{display:flex;gap:6px;margin-top:8px}
+.seg button{flex:1;min-height:40px;padding:4px;font-size:15px}
+.seg button.on[data-e=ok]{background:var(--ok);border-color:var(--ok);color:#fff}
+.seg button.on[data-e=ko]{background:var(--ko);border-color:var(--ko);color:#fff}
+.seg button.on[data-e=pend]{background:var(--pend);border-color:var(--pend);color:#fff}
+.seg button.on[data-e=np]{background:var(--np);border-color:var(--np);color:#fff}
+.extra{margin-top:8px;display:grid;gap:6px}
+.extra textarea{min-height:44px}
+.chip{display:inline-block;font-size:12px;border-radius:10px;padding:1px 8px;background:var(--gris);color:var(--suave)}
+.cont{font-size:13px;font-weight:400;color:var(--suave)}
+.pend-item{border-bottom:1px solid var(--borde);padding:8px 0}
+.pend-item:last-child{border-bottom:none}
+.vacia{text-align:center;color:var(--suave);padding:30px 10px}
+.aviso{background:#fff7e0;border:1px solid #f0d58a;border-radius:8px;padding:10px;font-size:14px;margin-bottom:10px}
+.asis{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;margin-bottom:6px}
+@media (max-width:560px){.asis{grid-template-columns:1fr 1fr}.asis button{grid-column:span 2}}
+.docbtn{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--borde)}
+.docbtn:last-child{border-bottom:none}
+.docbtn .n{flex:1}
+dialog{border:none;border-radius:12px;padding:0;max-width:640px;width:calc(100% - 20px)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog .cuerpo{padding:14px;max-height:75vh;overflow:auto}
+dialog .pie{padding:10px 14px;border-top:1px solid var(--borde);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+#toast.on{opacity:1}
+/* Vista previa / impresión */
+#vista{position:fixed;inset:0;background:#777;z-index:50;display:none;flex-direction:column}
+#vista.on{display:flex}
+#vista .barra-v{background:#fff;display:flex;gap:8px;padding:8px;align-items:center}
+#vista .barra-v .tit{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#vista .scroll{flex:1;overflow:auto;padding:10px}
+#hoja{background:#fff;width:595pt;margin:0 auto;padding:30pt 40pt;font:10pt Tahoma,"Lucida Sans Unicode",Arial,sans-serif;color:#000;transform-origin:top left}
+#hoja table.seccion{width:100%;border-collapse:collapse;margin-bottom:30pt}
+#hoja table.seccion>thead>tr>td,#hoja table.seccion>tfoot>tr>td,#hoja table.seccion>tbody>tr>td{padding:0}
+#hoja .marco{display:none}
+#hoja .pie-fijo{position:static!important;margin-top:10pt}
+#zona-impresion .pie-fijo{position:fixed}
+#zona-impresion{display:none}
+@media print{
+  body>*:not(#zona-impresion){display:none!important}
+  html,body{background:#fff}
+  #zona-impresion{display:block;font:10pt Tahoma,"Lucida Sans Unicode",Arial,sans-serif;color:#000}
+  #zona-impresion table.seccion{width:100%;border-collapse:collapse}
+  #zona-impresion table.seccion>thead>tr>td,#zona-impresion table.seccion>tfoot>tr>td,#zona-impresion table.seccion>tbody>tr>td{padding-top:0;padding-bottom:0}
+  #zona-impresion .marco{position:fixed;top:0;left:0;right:0;bottom:0}
+  #zona-impresion tr,#zona-impresion .p{break-inside:avoid}
+  #zona-impresion *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+<style id="estilo-pagina"></style>
+</head>
+<body>
+<header class="barra">
+  <button class="link" id="atras" aria-label="Atrás" style="font-size:22px;display:none">‹</button>
+  <img alt="Ingeprojects" style="display:none">
+  <div class="tit" id="titulo">Check list instalaciones</div>
+</header>
+<div id="pestanas"></div>
+<main id="app"></main>
+<div id="vista">
+  <div class="barra-v"><button id="v-cerrar">Cerrar</button><div class="tit" id="v-tit"></div><button class="prim" id="v-imprimir">Guardar PDF</button></div>
+  <div class="scroll"><div id="hoja"></div></div>
+</div>
+<div id="zona-impresion"></div>
+<dialog id="dlg"><div class="cuerpo" id="dlg-cuerpo"></div><div class="pie" id="dlg-pie"></div></dialog>
+<div id="toast"></div>
+<input type="file" id="f-importar" accept=".json,application/json" style="display:none">
+<input type="file" id="f-logo" accept="image/png,image/jpeg" style="display:none">
+<script src="plantillas.js"></script>
+<script src="motor-docs.js"></script>
+<script src="documentos.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
